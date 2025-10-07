@@ -99,7 +99,7 @@ def init_db():
         email VARCHAR(255),
         cell VARCHAR(50),
         tessera VARCHAR(50),
-        dataCert VARCHAR(50),
+        datacert VARCHAR(50),
         pagato SMALLINT DEFAULT 0,
         importo VARCHAR(50),
         UNIQUE (corso, row_index, mese)
@@ -197,7 +197,7 @@ def register():
                         ("BodyBuilding", nome, cognome, phone, mese))
             if not cur.fetchone():
                 cur.execute(
-                    "INSERT INTO corsi_data (corso,row_index,mese,nome,cognome,email,cell,tessera,dataCert,pagato,importo) "
+                    "INSERT INTO corsi_data (corso,row_index,mese,nome,cognome,email,cell,tessera,datacert,pagato,importo) "
                     "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,0,'')",
                     ("BodyBuilding", row_index, mese, nome, cognome, email, phone, "", "")
                 )
@@ -421,7 +421,7 @@ def get_course_data_route(corso):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     cur.execute("""
-        SELECT cd.row_index, u.id AS user_id, cd.nome, cd.cognome, cd.email, cd.cell, cd.tessera, cd.dataCert, cd.pagato, cd.importo
+        SELECT cd.row_index, u.id AS user_id, cd.nome, cd.cognome, cd.email, cd.cell, cd.tessera, cd.datacert, cd.pagato, cd.importo
         FROM corsi_data cd
         LEFT JOIN utenti u ON cd.email = u.email
         WHERE cd.corso = %s AND cd.mese = %s
@@ -438,7 +438,7 @@ def get_course_data_route(corso):
             "email": r["email"] or "",
             "cell": r["cell"] or "",
             "tessera": r["tessera"] or "",
-            "dataCert": r["dataCert"] or "",
+            "dataCert": r["datacert"] or "",
             "pagato": bool(r["pagato"]),
             "importo": r["importo"] or ""
         })
@@ -478,7 +478,7 @@ def save_course_data_route(corso):
         idx = cur.fetchone()["idx"]
 
         cur.execute(
-            "INSERT INTO corsi_data (corso,row_index,mese,nome,cognome,email,cell,tessera,dataCert,pagato,importo) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+            "INSERT INTO corsi_data (corso,row_index,mese,nome,cognome,email,cell,tessera,datacert,pagato,importo) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
             (corso, idx, mese, nome, cognome, email, cell, tessera, dataCert, pagato, importo)
         )
         saved_rows.append({"index": idx, "email": email})
@@ -491,7 +491,7 @@ def save_course_data_route(corso):
                 existing = cur.fetchone()
                 if existing:
                     cur.execute(
-                        "UPDATE corsi_data SET nome=%s, cognome=%s, tessera=%s, dataCert=%s WHERE corso=%s AND email=%s AND cell=%s AND mese=%s",
+                        "UPDATE corsi_data SET nome=%s, cognome=%s, tessera=%s, datacert=%s WHERE corso=%s AND email=%s AND cell=%s AND mese=%s",
                         (nome, cognome, tessera, dataCert, corso, email, cell, m)
                     )
                 else:
