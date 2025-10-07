@@ -18,7 +18,7 @@ let meseSelect = null;     // elemento select, creato dinamicamente
 
 // helper: crea una riga vuota
 function emptyRow() {
-    return { nome: "", cognome: "", email: "", cell: "", tessera: "", dataCert: "", pagato: false, importo: "" };
+    return { nome: "", cognome: "", email: "", cell: "", tessera: "", datacert: "", pagato: false, importo: "" };
 }
 
 function escapeHtml(s){
@@ -80,7 +80,7 @@ function buildTableHtml(rows) {
             <td contenteditable="true" data-field="email">${escapeHtml(r.email || "")}</td>
             <td contenteditable="true" data-field="cell">${escapeHtml(r.cell)}</td>
             <td contenteditable="true" data-field="tessera">${escapeHtml(r.tessera)}</td>
-            <td contenteditable="true" data-field="dataCert">${escapeHtml(r.dataCert)}</td>
+            <td contenteditable="true" data-field="datacert">${escapeHtml(r.datacert)}</td>
             <td><input type="checkbox" data-field="pagato" ${r.pagato ? "checked" : ""}></td>
             <td contenteditable="true" data-field="importo">${escapeHtml(r.importo)}</td>
             <td><button class="btn deleteRow">Elimina</button></td>
@@ -113,7 +113,7 @@ function buildBodyBuildingTableHtml(rows) {
             <td contenteditable="true" data-field="email">${escapeHtml(r.email || "")}</td>
             <td contenteditable="true" data-field="cell">${escapeHtml(r.cell)}</td>
             <td contenteditable="true" data-field="tessera">${escapeHtml(r.tessera)}</td>
-            <td contenteditable="true" data-field="dataCert">${escapeHtml(r.dataCert)}</td>
+            <td contenteditable="true" data-field="datacert">${escapeHtml(r.datacert)}</td>
             <td><input type="checkbox" data-field="pagato" ${r.pagato ? "checked" : ""}></td>
             <td contenteditable="true" data-field="importo">${escapeHtml(r.importo)}</td>
             <td><input type="file" class="uploadPdf"></td>
@@ -142,7 +142,7 @@ function collectTableData(container, isBodyBuilding=false) {
             email: cells[2].textContent.trim(),
             cell: cells[3].textContent.trim(),
             tessera: cells[4].textContent.trim(),
-            dataCert: cells[5].textContent.trim(),
+            datacert: cells[5].textContent.trim(),
             pagato: !!(pagatoInput && pagatoInput.checked),
             importo: cells[7].textContent.trim()
         });
@@ -291,7 +291,7 @@ async function attachDelegatedListeners(corso, container, isBodyBuilding=false) 
                     <td contenteditable="true" data-field="email"></td>
                     <td contenteditable="true" data-field="cell"></td>
                     <td contenteditable="true" data-field="tessera"></td>
-                    <td contenteditable="true" data-field="dataCert"></td>
+                    <td contenteditable="true" data-field="datacert"></td>
                     <td><input type="checkbox" data-field="pagato"></td>
                     <td contenteditable="true" data-field="importo"></td>
                     <td>
