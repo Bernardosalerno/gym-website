@@ -120,13 +120,16 @@ def init_db():
     print("init_db: tutte le tabelle create / verificate")
 
 # --- utility email ---
-def send_email(to, subject, body):
-    try:
-        msg = Message(subject, recipients=[to], body=body)
-        mail.send(msg)
-        print(f"Email inviata a {to}")
-    except Exception as e:
-        print("Errore invio email:", e)
+def send_email_async(to, subject, body):
+    def send():
+        try:
+            msg = Message(subject, recipients=[to], body=body)
+            mail.send(msg)
+            print(f"Email inviata a {to}")
+        except Exception as e:
+            print(f"Errore invio email asincrona: {e}")
+    thread = threading.Thread(target=send)
+    thread.start()
 
 # Per HTML
 @app.route("/")
@@ -363,11 +366,12 @@ def admin_upload(user_id):
     cur.execute("UPDATE utenti SET pdf_path=%s WHERE id=%s", (safe_name, user_id))
     conn.commit()
 
+    # Email asincrona
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("SELECT email, COALESCE(username,nome_cognome) AS username FROM utenti WHERE id=%s", (user_id,))
     row = cur.fetchone()
     if row and row["email"]:
-        send_email(
+        send_email_async(
             row["email"],
             "Hai ricevuto un file dalla Gymnica Fitness Club",
             f"Ciao {row['username']},\n\nHai ricevuto un file dalla Gymnica Fitness Club. Puoi scaricarlo dal tuo profilo."
@@ -575,14 +579,14 @@ def send_payment_reminder():
 
     for email in emails:
         try:
-            msg = Message(subject, recipients=[email], body=body)
-            mail.send(msg)
+            send_email_async(email, subject, body)
             success.append(email)
         except Exception as e:
             print(f"Errore invio a {email}: {e}")
             failed.append(email)
 
     return jsonify({"status": "ok","sent": success,"failed": failed,"message": f"Inviate {len(success)} mail, fallite {len(failed)}"})
+
 
 @app.route("/admin/course-totals/<corso>", methods=["GET"])
 def get_course_totals(corso):
@@ -619,7 +623,7 @@ def save_course_totals(corso):
 
     return jsonify({"status":"ok","message":"Totali salvati"})
 
-# --- run ---
+
 # --- run ---
 if __name__ == "__main__":
     with app.app_context():
