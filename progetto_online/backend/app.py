@@ -159,10 +159,12 @@ def register():
     conn = get_db()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
+    # Controlla se l'email esiste già
     cur.execute("SELECT id FROM utenti WHERE email=%s", (email,))
     if cur.fetchone():
         return jsonify({"status":"error","message":"Email già esistente"}), 400
 
+    # Hash della password
     pw_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     username = nome_cognome
     cur.execute(
@@ -171,25 +173,34 @@ def register():
     )
     conn.commit()
 
-    # separazione nome e cognome
+    # Separazione nome e cognome
     parts = nome_cognome.split()
     nome = parts[0]
     cognome = " ".join(parts[1:]) if len(parts) > 1 else ""
 
-    # inserimento corsi_data mesi futuri
+    # Inserimento corsi_data mesi futuri (BodyBuilding)
     month_names = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno",
                    "Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"]
     for year in range(2025, 2030):
         for m_idx in range(12):
-            if year==2025 and m_idx+1<10: continue
+            if year == 2025 and m_idx+1 < 10:  # inizia da Ottobre 2025
+                continue
             mese = f"{month_names[m_idx]}-{year}"
-            cur.execute("SELECT COALESCE(MAX(row_index),-1)+1 AS idx FROM corsi_data WHERE corso=%s AND mese=%s", ("BodyBuilding", mese))
+            
+            # Calcola il prossimo row_index disponibile
+            cur.execute("SELECT COALESCE(MAX(row_index), -1)+1 AS idx FROM corsi_data WHERE corso=%s AND mese=%s", 
+                        ("BodyBuilding", mese))
             row_index = cur.fetchone()["idx"]
+            
+            # Inserisce solo se non esiste già
             cur.execute("SELECT 1 FROM corsi_data WHERE corso=%s AND nome=%s AND cognome=%s AND cell=%s AND mese=%s",
                         ("BodyBuilding", nome, cognome, phone, mese))
             if not cur.fetchone():
-                cur.execute("INSERT INTO corsi_data (corso,row_index,mese,nome,cognome,email,cell,tessera,dataCert,pagato,importo) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,0,'')",
-                            ("BodyBuilding", row_index, mese, nome, cognome, email, phone, "", ""))
+                cur.execute(
+                    "INSERT INTO corsi_data (corso,row_index,mese,nome,cognome,email,cell,tessera,dataCert,pagato,importo) "
+                    "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,0,'')",
+                    ("BodyBuilding", row_index, mese, nome, cognome, email, phone, "", "")
+                )
     conn.commit()
     return jsonify({"status":"ok","message":"Registrazione completata"}), 201
 
