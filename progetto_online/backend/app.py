@@ -9,6 +9,7 @@ from werkzeug.utils import secure_filename
 from flask_mail import Mail, Message
 import psycopg2
 import psycopg2.extras
+import threading
 
 # --- Config base ---
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
