@@ -562,6 +562,7 @@ def save_single_course_row(corso):
 
     conn.commit()
     return jsonify({"status": "ok", "message": "Riga salvata correttamente", "user_id": user_id, "row_index": row_index})
+    
 @app.route("/admin/send-payment-reminder", methods=["POST"])
 def send_payment_reminder():
     if not session.get("admin_logged_in"):
@@ -582,15 +583,14 @@ def send_payment_reminder():
         "Saluti,\nGymnica Fitness Club"
     )
 
-    # Non inviamo le email dal backend: restituiamo i dati al frontend
+    # Restituiamo i dati al frontend per aprire il client email
     return jsonify({
         "status": "ok",
-        "emails": emails,
+        "sent": emails,       # ⚡ compatibile col JS esistente
         "subject": subject,
         "body": body,
         "message": f"Preparati a inviare {len(emails)} mail tramite il client di posta."
     })
-
 
 @app.route("/admin/course-totals/<corso>", methods=["GET"])
 def get_course_totals(corso):
