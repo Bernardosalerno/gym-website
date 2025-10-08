@@ -26,6 +26,17 @@ function escapeHtml(s){
     return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+function openMailClient(to, subject, body) {
+  const from = "asdgymnicafitnessclub@gmail.com"; // ✉️ indirizzo della palestra
+  const paramSubject = encodeURIComponent(subject);
+  const paramBody = encodeURIComponent(body);
+
+  // Aggiungiamo il mittente (funziona solo se configurato sul dispositivo)
+  const mailtoLink = `mailto:${to}?subject=${paramSubject}&body=${paramBody}&from=${encodeURIComponent(from)}`;
+
+  window.location.href = mailtoLink;
+}
+
 // ========================
 // LOGIN ADMIN
 // ========================
@@ -383,18 +394,26 @@ async function attachDelegatedListeners(corso, container, isBodyBuilding=false) 
 
             try {
                 const res = await fetch(`${baseURL}/admin/upload/${userId}`, {
-                    method:"POST",
+                    method: "POST",
                     body: formData,
-                    credentials:"include"
+                    credentials: "include"
                 });
+
                 const data = await res.json();
-                if(res.ok && data.status==="ok"){
+
+                if (res.ok && data.status === "ok") {
                     alert("File caricato correttamente");
+
+        // ✅ Se ci sono i dati per la mail, apri il client di posta
+                    if (data.email && data.subject && data.body) {
+                        openMailClient(data.email, data.subject, data.body);
+                    }
+
                     fileInput.value = "";
                 } else {
-                    alert("Errore caricamento file: " + (data.message||"unknown"));
-                }
-            } catch(err){
+                    alert("Errore caricamento file: " + (data.message || "unknown"));
+                    }
+            } catch (err) {
                 console.error(err);
                 alert("Errore caricamento file");
             }
@@ -467,7 +486,7 @@ function addPaymentReminderButton(container) {
             const emailCell = tr.querySelector("td[data-field='email']");
             if (pagatoInput && !pagatoInput.checked && emailCell) {
                 const email = emailCell.textContent.trim();
-                if(email) unpaidEmails.push(email);
+                if (email) unpaidEmails.push(email);
             }
         });
 
@@ -483,16 +502,25 @@ function addPaymentReminderButton(container) {
                 credentials: "include",
                 body: JSON.stringify({ emails: unpaidEmails, mese: currentMonth })
             });
+
             const data = await res.json();
 
-            if(res.ok && data.status === "ok"){
-                alert(`Mail inviate correttamente: ${data.sent.length}`);
+            if (res.ok && data.status === "ok") {
+                alert(`Mail pronte per l'invio: ${data.sent.length}`);
+                
+                // 🔹 Apre la mail sul dispositivo per ciascun destinatario
+                data.sent.forEach((email, index) => {
+                    setTimeout(() => {
+                        openMailClient(email, data.subject, data.body);
+                    }, index * 1500); // pausa di 1.5s per evitare blocchi multipli
+                });
+
             } else {
-                alert(`Errore invio mail: ${data.message || "unknown"}`);
+                alert(`Errore durante la preparazione delle mail: ${data.message || "unknown"}`);
             }
-        } catch(err){
+        } catch (err) {
             console.error(err);
-            alert("Errore invio mail");
+            alert("Errore durante la preparazione delle mail");
         }
     });
 }
