@@ -10,7 +10,6 @@ from werkzeug.utils import secure_filename
 from flask_mail import Mail, Message
 import psycopg2
 import psycopg2.extras
-import threading
 
 # --- Config base ---
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -122,21 +121,19 @@ def init_db():
     print("init_db: tutte le tabelle create / verificate")
 
 # --- utility email ---
-def send_email_async(to, subject, body):
-    """Invia un'email in modo asincrono mantenendo il contesto Flask corretto."""
-    app = current_app._get_current_object()
-
-    def send():
-        with app.app_context():
-            try:
-                msg = Message(subject, recipients=[to], body=body)
-                mail.send(msg)
-                print(f"✅ Email inviata a {to}")
-            except Exception as e:
-                print(f"❌ Errore invio email asincrona: {e}")
-
-    thread = threading.Thread(target=send)
-    thread.start()
+#def send_email_async(to, subject, body):
+#    """Invia un'email in modo asincrono mantenendo il contesto Flask corretto."""
+#    app = current_app._get_current_object()
+#    def send():
+#        with app.app_context():
+#            try:
+#                msg = Message(subject, recipients=[to], body=body)
+#                mail.send(msg)
+#                print(f"✅ Email inviata a {to}")
+#            except Exception as e:
+#                print(f"❌ Errore invio email asincrona: {e}")
+#    thread = threading.Thread(target=send)
+#    thread.start()
 
 # Per HTML
 @app.route("/")
@@ -373,19 +370,18 @@ def admin_upload(user_id):
     cur.execute("UPDATE utenti SET pdf_path=%s WHERE id=%s", (safe_name, user_id))
     conn.commit()
 
-    # Email asincrona
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("SELECT email, COALESCE(username,nome_cognome) AS username FROM utenti WHERE id=%s", (user_id,))
     row = cur.fetchone()
     if row and row["email"]:
-        with app.app_context():
-            send_email_async(
-                row["email"],
-                "Hai ricevuto un file dalla Gymnica Fitness Club",
-                f"Ciao {row['username']},\n\nHai ricevuto un file dalla Gymnica Fitness Club. Puoi scaricarlo dal tuo profilo."
-            )
-
-    return jsonify({"status":"ok","message":"PDF caricato e email inviata"})
+        return jsonify({
+            "status": "ok",
+            "message": "PDF caricato correttamente",
+            "email": row["email"],
+            "username": row["username"],
+            "subject": "Hai ricevuto un file dalla Gymnica Fitness Club",
+            "body": f"Ciao {row['username']},\n\nHai ricevuto un file dalla Gymnica Fitness Club. Puoi scaricarlo dal tuo profilo."
+        })
 
 # --- SCARICA PDF ---
 @app.route("/scheda", methods=["GET"])
@@ -566,7 +562,6 @@ def save_single_course_row(corso):
 
     conn.commit()
     return jsonify({"status": "ok", "message": "Riga salvata correttamente", "user_id": user_id, "row_index": row_index})
-
 @app.route("/admin/send-payment-reminder", methods=["POST"])
 def send_payment_reminder():
     if not session.get("admin_logged_in"):
@@ -587,23 +582,13 @@ def send_payment_reminder():
         "Saluti,\nGymnica Fitness Club"
     )
 
-    success, failed = [], []
-
-    for email in emails:
-        try:
-            # Invio asincrono dentro il contesto Flask
-            with app.app_context():
-                send_email_async(email, subject, body)
-            success.append(email)
-        except Exception as e:
-            print(f"❌ Errore invio a {email}: {e}")
-            failed.append(email)
-
+    # Non inviamo le email dal backend: restituiamo i dati al frontend
     return jsonify({
         "status": "ok",
-        "sent": success,
-        "failed": failed,
-        "message": f"Inviate {len(success)} mail, fallite {len(failed)}"
+        "emails": emails,
+        "subject": subject,
+        "body": body,
+        "message": f"Preparati a inviare {len(emails)} mail tramite il client di posta."
     })
 
 
