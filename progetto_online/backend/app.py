@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify, session, g, send_from_directory, send_file
+from flask import current_app
 from flask_cors import CORS
 import bcrypt
 from werkzeug.utils import secure_filename
@@ -122,13 +123,18 @@ def init_db():
 
 # --- utility email ---
 def send_email_async(to, subject, body):
+    """Invia un'email in modo asincrono mantenendo il contesto Flask corretto."""
+    app = current_app._get_current_object()
+
     def send():
-        try:
-            msg = Message(subject, recipients=[to], body=body)
-            mail.send(msg)
-            print(f"Email inviata a {to}")
-        except Exception as e:
-            print(f"Errore invio email asincrona: {e}")
+        with app.app_context():
+            try:
+                msg = Message(subject, recipients=[to], body=body)
+                mail.send(msg)
+                print(f"✅ Email inviata a {to}")
+            except Exception as e:
+                print(f"❌ Errore invio email asincrona: {e}")
+
     thread = threading.Thread(target=send)
     thread.start()
 
@@ -372,11 +378,12 @@ def admin_upload(user_id):
     cur.execute("SELECT email, COALESCE(username,nome_cognome) AS username FROM utenti WHERE id=%s", (user_id,))
     row = cur.fetchone()
     if row and row["email"]:
-        send_email_async(
-            row["email"],
-            "Hai ricevuto un file dalla Gymnica Fitness Club",
-            f"Ciao {row['username']},\n\nHai ricevuto un file dalla Gymnica Fitness Club. Puoi scaricarlo dal tuo profilo."
-        )
+        with app.app_context():
+            send_email_async(
+                row["email"],
+                "Hai ricevuto un file dalla Gymnica Fitness Club",
+                f"Ciao {row['username']},\n\nHai ricevuto un file dalla Gymnica Fitness Club. Puoi scaricarlo dal tuo profilo."
+            )
 
     return jsonify({"status":"ok","message":"PDF caricato e email inviata"})
 
@@ -563,30 +570,41 @@ def save_single_course_row(corso):
 @app.route("/admin/send-payment-reminder", methods=["POST"])
 def send_payment_reminder():
     if not session.get("admin_logged_in"):
-        return jsonify({"status":"error","message":"Non autorizzato"}), 401
+        return jsonify({"status": "error", "message": "Non autorizzato"}), 401
 
     data = request.get_json() or {}
     emails = data.get("emails", [])
     mese = data.get("mese", "")
 
     if not emails or not mese:
-        return jsonify({"status":"error","message":"Dati mancanti"}), 400
+        return jsonify({"status": "error", "message": "Dati mancanti"}), 400
 
     subject = f"Promemoria pagamento mese {mese}"
-    body = f"Ciao, stanno per scadere i termini di pagamento, ti ricordiamo di saldare il mese di {mese}."
+    body = (
+        f"Ciao,\n\n"
+        f"Stanno per scadere i termini di pagamento per il mese di {mese}. "
+        "Ti ricordiamo di saldare la tua quota al più presto.\n\n"
+        "Saluti,\nGymnica Fitness Club"
+    )
 
-    success = []
-    failed = []
+    success, failed = [], []
 
     for email in emails:
         try:
-            send_email_async(email, subject, body)
+            # Invio asincrono dentro il contesto Flask
+            with app.app_context():
+                send_email_async(email, subject, body)
             success.append(email)
         except Exception as e:
-            print(f"Errore invio a {email}: {e}")
+            print(f"❌ Errore invio a {email}: {e}")
             failed.append(email)
 
-    return jsonify({"status": "ok","sent": success,"failed": failed,"message": f"Inviate {len(success)} mail, fallite {len(failed)}"})
+    return jsonify({
+        "status": "ok",
+        "sent": success,
+        "failed": failed,
+        "message": f"Inviate {len(success)} mail, fallite {len(failed)}"
+    })
 
 
 @app.route("/admin/course-totals/<corso>", methods=["GET"])
